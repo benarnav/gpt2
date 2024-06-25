@@ -51,20 +51,21 @@ class GPT2(nn.Module):
     def __init__(self, config: GPT2Config = GPT2Config()):
         super().__init__()
         self.config = config
-        self.emb = nn.Embedding(self.config.d_vocab, self.config.d_model)
+        self.W_E = nn.Embedding(self.config.d_vocab, self.config.d_model)
+        nn.init.normal_(self.W_E.weight, mean=0.0, std=self.config.weight_init)
         self.pos = nn.Parameter(torch.zeros(config.d_seq, self.config.d_model))
         layers = [TransformerBlock(self.config) for _ in range(self.config.num_layers)]
         layers.append(LayerNorm(self.config.d_model))
         self.layers = nn.Sequential(*layers)
-        self.unemb = nn.Linear(self.config.d_model, self.config.d_vocab)
-        self.unemb.weight = self.emb.weight
+        self.W_U = nn.Linear(self.config.d_model, self.config.d_vocab, bias=False)
+        self.W_U.weight = self.W_E.weight
 
-    def forward(self, input: torch.Tensor):  # [batch, seq]
-        embeded = self.emb(input)
+    def forward(self, input: float[torch.Tensor, "batch seq"]):  # [batch, seq]
+        embeded = self.W_E(input)
         residual = embeded + self.pos
         layers_out = self.layers(residual)
 
-        return self.unemb(layers_out)
+        return self.W_U(layers_out)
 
 
 class GPT2Train(GPT2):
