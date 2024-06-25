@@ -12,5 +12,5 @@ class GPT2Config:
     d_head: int = 64  # d_model / num_heads
     num_heads: int = 12
     num_layers: int = 12
-    dropout_rate: float = 0.1
+    dropout_rate: float = 0.01
     output_dir: str = "gpt2_output/"

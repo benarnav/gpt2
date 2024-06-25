@@ -34,11 +34,14 @@ class TransformerBlock(nn.Module):
         attn_out = self.attention(pre_attn_norm)
         if self.training:
             attn_out = _dropout(attn_out, self.config.dropout_rate)
+
         residual += attn_out
+
         pre_mlp_norm = self.mlp_norm(residual)
         mlp_out = self.mlp(pre_mlp_norm)
         if self.training:
             mlp_out = _dropout(mlp_out, self.config.dropout_rate)
+
         residual += mlp_out
 
         return residual
@@ -63,10 +66,11 @@ class GPT2(nn.Module):
 
         return self.unemb(layers_out)
 
+
 class GPT2Train(GPT2):
     def forward(self, input: torch.Tensor):
         logits = super().forward(input)
-        
+
 
 if __name__ == "__main__":
     m = GPT2()

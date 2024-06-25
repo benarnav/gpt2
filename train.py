@@ -10,6 +10,8 @@ from adam import Adam
 from config import GPT2Config
 from model import GPT2
 
+def loss_function(logits, targets):
+    pass
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -24,7 +26,7 @@ def train(model, dataloader, optimizer, device):
         optimizer.zero_grad()
         input = batch["input_ids"].to(device)
         output = model(input)
-        loss = output # add loss
+        loss = loss_function(output, input)
         loss.backward()
         optimizer.step()
 
