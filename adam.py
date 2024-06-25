@@ -14,7 +14,7 @@ class Adam(nn.Module):
         lr_warmup: int = 2000,
         betas: tuple = (0.9, 0.999),
         eps: float = 1e-8,
-        weight_decay: float = 0.1,
+        weight_decay: float = 0.01,
         total_t: int = 98000,
     ) -> None:
         super().__init__()
@@ -46,14 +46,12 @@ class Adam(nn.Module):
         self.lr = self._get_learning_rate()
         for idx, param in enumerate(self.params):
             g_t = param.grad
-            if self.weight_decay != 0:
-                g_t += self.weight_decay * param
 
             self.m[idx] = self.betas[0] * self.m[idx] + (1 - self.betas[0]) * g_t
             self.v[idx] = self.betas[1] * self.v[idx] + (1 - self.betas[1]) * (g_t**2)
             m_hat = self.m[idx] / (1 - self.betas[0] ** self.t)
             v_hat = self.v[idx] / (1 - self.betas[1] ** self.t)
 
-            param -= (self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)
+            param -= ((self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)) + (self.weight_decay * param)
 
         self.t += 1
