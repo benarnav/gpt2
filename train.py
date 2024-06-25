@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import wandb
 from torch.utils.data import DataLoader
+from bytephase import Tokenizer
 
 from adam import Adam
 from config import GPT2Config

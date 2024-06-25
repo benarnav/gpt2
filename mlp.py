@@ -19,5 +19,5 @@ class MLP(nn.Module):
         with torch.no_grad():
             self.layers[-1].weight /= config.num_layers**0.5  # scaling initialization as specified in the paper
 
-    def forward(self, residual: float[torch.Tensor, "batch seq d_model"]):
+    def forward(self, residual: torch.Tensor):  # shape: "batch seq d_model"
         return self.layers(residual)
