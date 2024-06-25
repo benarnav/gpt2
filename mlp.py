@@ -17,7 +17,7 @@ class MLP(nn.Module):
         nn.init.normal_(self.layers[0].weight, mean=0.0, std=0.2)
         nn.init.normal_(self.layers[-1].weight, mean=0.0, std=0.2)
         with torch.no_grad():
-            self.layers[-1].weight /= config.num_layers**0.5
+            self.layers[-1].weight /= config.num_layers**0.5  # scaling initialization as specified in the paper
 
-    def forward(self, residual: torch.Tensor):
+    def forward(self, residual: float[torch.Tensor, "batch seq d_model"]):
         return self.layers(residual)
