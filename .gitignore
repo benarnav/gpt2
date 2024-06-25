@@ -128,3 +128,4 @@ CMakeLists.txt.user
 checkpoint/
 logs/
 *.bpe
+config_test.py

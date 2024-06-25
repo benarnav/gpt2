@@ -10,8 +10,7 @@ class GPT2Config:
     d_hidden: int = 3072
     batch_size: int = 512
     epochs: int = 100
-    d_v: int = 512  # 64
-    d_k: int = 512  # 64
+    d_head: int = 64  # d_model / num_heads
     num_heads: int = 12
     num_layers: int = 12
     dropout_rate: float = 0.1
