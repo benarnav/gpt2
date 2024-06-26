@@ -11,7 +11,7 @@ def _dropout(input: torch.Tensor, p: float = 0.1) -> torch.Tensor:
     assert 0 <= p <= 1
     if p == 1:
         return torch.zeros_like(input)
-    mask = (torch.rand(input.shape) > p).float()
+    mask = (torch.rand(input.shape, device=input.device) > p).float()
     out = input * mask / (1.0 - p)
 
     return out
@@ -60,17 +60,12 @@ class GPT2(nn.Module):
         self.W_U = nn.Linear(self.config.d_model, self.config.d_vocab, bias=False)
         self.W_U.weight = self.W_E.weight
 
-    def forward(self, input: float[torch.Tensor, "batch seq"]):  # [batch, seq]
+    def forward(self, input: torch.Tensor):  # "batch seq"
         embeded = self.W_E(input)
         residual = embeded + self.pos
         layers_out = self.layers(residual)
 
         return self.W_U(layers_out)
-
-
-class GPT2Train(GPT2):
-    def forward(self, input: torch.Tensor):
-        logits = super().forward(input)
 
 
 if __name__ == "__main__":
