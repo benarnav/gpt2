@@ -1,16 +1,12 @@
-import regex
-from typing import Dict, Set, Union, List
 from collections import Counter
+from typing import Dict, List, Union
 
-from functools import lru_cache
-
-from _bpe import train, build_trie, manual_free_trie, encode
+import regex
+from _bpe import build_trie, encode_inference, encode_train, manual_free_trie, train
 
 __version__ = "1.0"
 
-GPT2_REGEX_PATTERN = (
-    r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-)
+GPT2_REGEX_PATTERN = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
 
 class Tokenizer:
@@ -24,6 +20,7 @@ class Tokenizer:
     Attributes:
         pattern (str): Regex pattern used for tokenization.
         compiled_pattern (regex.Pattern): Compiled regex pattern.
+        file_read_buffer (int): Size of the buffer used when reading files during training.
         decode_dict (dict): Mapping of token IDs to byte sequences.
         _trie: Internal trie structure for efficient encoding (C extension).
 
@@ -32,9 +29,17 @@ class Tokenizer:
         The trie is automatically freed when the Tokenizer instance is deleted.
     """
 
-    def __init__(self, pattern: Union[str, None] = None) -> None:
+    __slots__ = (
+        "pattern",
+        "compiled_pattern",
+        "file_read_buffer",
+        "decode_dict",
+        "_trie",
+    )
+
+    def __init__(self, pattern: Union[str, None] = None, file_read_buffer: int = 2048) -> None:
         """
-        Initialize the Tokenizer with an optional regex pattern.
+        Initialize the Tokenizer with an optional regex pattern and buffer size.
 
         Args:
             pattern (str, optional): Custom regex pattern for tokenization.
@@ -43,6 +48,7 @@ class Tokenizer:
 
         self.pattern = GPT2_REGEX_PATTERN if pattern is None else pattern
         self.compiled_pattern = regex.compile(self.pattern)
+        self.file_read_buffer = file_read_buffer
         self.decode_dict: Dict[int, bytes] = {}
         self._trie = None
 
@@ -51,35 +57,73 @@ class Tokenizer:
             manual_free_trie(self._trie)
             self._trie = None
 
-    def train(self, data: str, vocab_size: int) -> None:
+    def _read_file_in_chunks(self, file_path):
+        """Generator function to read a file in chunks."""
+
+        with open(file_path, "rb") as f:
+            while True:
+                chunk = f.read(self.file_read_buffer)
+                if not chunk:
+                    break
+                yield chunk
+
+    def _process_chunks(self, file_path):
+        """Process chunks of the file using the provided regex pattern."""
+
+        buffer = ""
+        for chunk in self._read_file_in_chunks(file_path):
+            chunk_str = chunk.decode("utf-8", errors="ignore")
+            combined_data = buffer + chunk_str
+            matches = self.compiled_pattern.findall(combined_data)
+
+            if len(matches) > 0:
+                yield matches[:-1]
+
+            if matches:
+                buffer = matches[-1]
+            else:
+                buffer = ""
+
+        if buffer:
+            yield buffer
+
+    def train(self, file_path: str, vocab_size: int) -> None:
         """
-        Train the tokenizer on the given data using the BPE algorithm.
+        Train the tokenizer on the given file using the BPE algorithm.
+
+        This method processes the input file in chunks, builds a frequency dictionary
+        of tokens, and then uses the BPE algorithm to create a vocabulary of the
+        specified size. It updates the tokenizer's decode dictionary and builds
+        a trie structure for efficient encoding.
 
         Args:
-            data (str): The text data to train on.
-            vocab_size (int): The final size of the vocabulary.
+            file_path (str): The path to the file containing the training data.
+            vocab_size (int): The desired size of the final vocabulary.
 
         Raises:
-            ValueError: If input data is not a string or vocab_size is not a positive integer.
+            ValueError: If file_path is not a string or vocab_size is not a positive integer.
 
         Note:
-            This method updates the decode_dict attribute and builds the C-based trie structure.
+            The resulting vocabulary includes 256 byte tokens plus additional merged tokens.
         """
-        if not isinstance(data, str):
-            raise ValueError("Input data must be a string")
+
+        if not isinstance(file_path, str):
+            raise ValueError("Input data must be a file path as a string")
         if not isinstance(vocab_size, int) or vocab_size <= 0:
             raise ValueError("vocab_size must be a positive integer")
 
-        words = {}
-        num_merges = vocab_size - 256
+        text_stats = Counter()
+        for matches in self._process_chunks(file_path):
+            text_stats.update(matches)
+        text_stats = dict(text_stats)
 
-        text_chunks = self.compiled_pattern.findall(data)
-        words = dict(Counter(text_chunks))
-        merges = train(words, len(words), num_merges)
+        num_merges = vocab_size - 257
+        merges = train(text_stats, len(text_stats), num_merges)
 
         self.decode_dict = {idx: bytes([idx]) for idx in range(256)}
+        self.decode_dict[256] = bytes("<|endoftext|>".encode("utf-8"))
 
-        idx = 256
+        idx = 257
         for merge in merges:
             byte_array = bytes(merge)
             self.decode_dict[idx] = byte_array
@@ -87,26 +131,38 @@ class Tokenizer:
 
         self._trie = build_trie(self.decode_dict)
 
-    # @lru_cache
-    def encode(self, input_text: str) -> List[int]:
+    def encode(self, input_text: str, train_mode: bool = True) -> List[int]:
         """
-        Encode the input text into a list of token IDs using the C-based trie structure.
+        Encode the input text into a list of token IDs using a C-based trie structure.
+
+        This method first tokenizes the input text using the compiled regex pattern,
+        then encodes these tokens into token IDs using the C extension.
 
         Args:
             input_text (str): The input text to encode.
+            train_mode (bool, optional): Flag to indicate if the encoding is in training mode. Defaults to True.
 
         Returns:
             List[int]: A list of token IDs representing the encoded text.
 
         Raises:
             ValueError: If input_text is not a string.
+
+        Note:
+            Encoding when train_mode is True will use less memory, but is slower by about 25% on average.
+            When train_mode is False, encoding will be faster but use more memory, which is more appropriate
+            at inference time.
         """
         if not isinstance(input_text, str):
             raise ValueError("Input text must be a string")
 
-        text_chunks = self.compiled_pattern.findall(input_text)
-        encoded_text = encode(text_chunks, self._trie)
-        return encoded_text
+        if train_mode:
+            chunk_iterator = self.compiled_pattern.finditer(input_text)
+            return encode_train(chunk_iterator, self._trie)
+
+        else:
+            text_chunks = self.compiled_pattern.findall(input_text)
+            return encode_inference(text_chunks, self._trie)
 
     def decode(self, input_tokens: List[int]) -> str:
         """
@@ -145,15 +201,15 @@ class Tokenizer:
 
         Note:
             Saves the tokenizer to '{file_name}.bpe'.
-            If debug is True, also saves to '{file_name}_debug.bpe'.
+            If debug is True, also saves a human-readable version of the
+            tokenizer to '{file_name}_debug.bpe'.
+
         """
 
         output_file = file_name + ".bpe"
 
         with open(output_file, "w") as f:
-            f.write(
-                f"bpe tokenizer by benjamin arnav v1\nregex patten: {self.pattern}\n"
-            )
+            f.write(f"bpe tokenizer by benjamin arnav v1\nregex patten: {self.pattern}\n")
             for idx, token in self.decode_dict.items():
                 token_ints = " ".join(str(b) for b in token)
                 f.write(f"{idx} {token_ints}\n")
@@ -162,16 +218,14 @@ class Tokenizer:
             # Outputs a human-readable version
             debug_filename = file_name + "_debug.bpe"
             with open(debug_filename, "w") as f:
-                f.write(
-                    f"bpe tokenizer by benjamin arnav v1\nregex patten: {self.pattern}\n"
-                )
+                f.write(f"bpe tokenizer by benjamin arnav v1\nregex patten: {self.pattern}\n")
                 for idx, token in self.decode_dict.items():
                     token_chars = self.decode(list(token))
                     f.write(f"{idx} {token_chars}\n")
 
     def load(self, file: str) -> None:
         """
-        Load a previously saved tokenizer from a file.
+        Load a previously saved tokenizer from a .bpe file.
 
         Args:
             file (str): The path to the .bpe file to load.

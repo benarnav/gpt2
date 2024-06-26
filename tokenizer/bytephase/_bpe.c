@@ -589,11 +589,11 @@ static PyObject* manual_free_trie(PyObject* self, PyObject* args) {
     Py_RETURN_NONE;
 }
 
-static PyObject* encode(PyObject* self, PyObject* args) {
-    PyObject* input_chunks;
+static PyObject* encode_train(PyObject* self, PyObject* args) {
+    PyObject* text_iterator;
     PyObject* trie_capsule;
     
-    if (!PyArg_ParseTuple(args, "OO", &input_chunks, &trie_capsule)) {
+    if (!PyArg_ParseTuple(args, "OO", &text_iterator, &trie_capsule)) {
         return NULL;
     }
 
@@ -608,14 +608,102 @@ static PyObject* encode(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    PyObject* iter = PyObject_GetIter(text_iterator);
+    if (!iter) {
+        PyErr_SetString(PyExc_TypeError, "First argument must be iterable");
+        return NULL;
+    }
+
+    PyObject* encoded_list = PyList_New(0);
+    if (!encoded_list) return NULL;
+
+    PyObject* chunk;
+    while ((chunk = PyIter_Next(iter))) {
+        PyObject* match_str = PyObject_CallMethod(chunk, "group", NULL);
+        Py_DECREF(chunk);
+        if (!PyUnicode_Check(match_str)) {
+            PyErr_SetString(PyExc_TypeError, "Each chunk must be a string");
+            Py_DECREF(match_str);
+            Py_DECREF(encoded_list);
+            Py_DECREF(iter);
+            return NULL;
+        }
+
+        Py_ssize_t text_length;
+        const char* text = PyUnicode_AsUTF8AndSize(match_str, &text_length);
+        if (!text) {
+            Py_DECREF(match_str);
+            Py_DECREF(iter);
+            Py_DECREF(encoded_list);
+            return NULL;
+        }
+
+        Py_ssize_t i = 0;
+        while (i < text_length) {
+            int match_length;
+            int token_id = search_trie(trie, (unsigned char*)text + i, text_length - i, &match_length);
+            PyObject* token_obj;
+
+            if (token_id != -1) {
+                token_obj = PyLong_FromLong(token_id);
+                i += match_length;
+            } else {
+                token_obj = PyLong_FromLong((unsigned char)text[i]);
+                i++;
+            }
+
+            if (!token_obj) {
+                Py_DECREF(match_str);
+                Py_DECREF(encoded_list);
+                Py_DECREF(iter);
+                return NULL;
+            }
+
+            if (PyList_Append(encoded_list, token_obj) == -1) {
+                Py_DECREF(token_obj);
+                Py_DECREF(match_str);
+                Py_DECREF(encoded_list);
+                Py_DECREF(iter);
+                return NULL;
+            }
+            Py_DECREF(token_obj);
+        }
+
+        Py_DECREF(match_str);
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        Py_DECREF(encoded_list);
+        return NULL;
+    }
+
+    return encoded_list;
+}
+
+static PyObject* encode_inference(PyObject* self, PyObject* args) {
+    PyObject* input_chunks;
+    PyObject* trie_capsule;
+    
+    if (!PyArg_ParseTuple(args, "OO", &input_chunks, &trie_capsule)) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to parse function args. Must be a list of strings and pointer to trie.");
+
+        return NULL;
+    }
+    if (trie_capsule == Py_None) {
+        PyErr_SetString(PyExc_ValueError, "Trie is None. Tokenizer may not have been trained or a encode dict was not loaded.");
+        return NULL;
+    }
+    Trie* trie = (Trie*)PyCapsule_GetPointer(trie_capsule, "bpe_trie");
+    if (!trie) {
+        PyErr_SetString(PyExc_ValueError, "Invalid trie object");
+        return NULL;
+    }
     if (!PyList_Check(input_chunks)) {
         PyErr_SetString(PyExc_TypeError, "Input must be a list of strings");
         return NULL;
     }
-
     Py_ssize_t num_chunks = PyList_Size(input_chunks);
     PyObject* encoded_list = PyList_New(0);
-
     for (Py_ssize_t chunk_idx = 0; chunk_idx < num_chunks; chunk_idx++) {
         PyObject* chunk = PyList_GetItem(input_chunks, chunk_idx);
         if (!PyUnicode_Check(chunk)) {
@@ -623,29 +711,26 @@ static PyObject* encode(PyObject* self, PyObject* args) {
             Py_DECREF(encoded_list);
             return NULL;
         }
-
         const char* text = PyUnicode_AsUTF8(chunk);
         if (!text) {
             Py_DECREF(encoded_list);
             return NULL;
         }
-
         int text_length = strlen(text);
         int i = 0;
         while (i < text_length) {
             int match_length;
             int token_id = search_trie(trie, (unsigned char*)text + i, text_length - i, &match_length);
-
             if (token_id != -1) {
                 PyList_Append(encoded_list, PyLong_FromLong(token_id));
                 i += match_length;
-            } else {
+            } 
+            else {
                 PyList_Append(encoded_list, PyLong_FromLong((unsigned char)text[i]));
                 i++;
             }
         }
     }
-
     return encoded_list;
 }
 
@@ -654,7 +739,9 @@ static PyMethodDef _BpeMethods[] = {
     {"train", train, METH_VARARGS, "Train a text tokenizer using byte-pair encoding."},
     {"build_trie", build_trie, METH_VARARGS, "Build a trie from an encoding dictionary."},
     {"manual_free_trie", manual_free_trie, METH_VARARGS, "Manually free the trie structure."},
-    {"encode", encode, METH_VARARGS, "Encode text using the trained BPE model."},
+    {"encode_train", encode_train, METH_VARARGS, "Encode text using the trained BPE model. Uses less memory but slower."},
+    {"encode_inference", encode_inference, METH_VARARGS, "Encode text using the trained BPE model. Faster but uses more memory."},
+
     {NULL, NULL, 0, NULL}
 };
 

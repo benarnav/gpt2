@@ -1,5 +1,5 @@
-from _bpe import train, encode, build_trie
+from _bpe import train, encode_train, encode_inference, build_trie
 from .tokenizer import Tokenizer
 
 __version__ = "1.0"
-__all__ = ["train", "encode", "build_trie", "Tokenizer"]
+__all__ = ["train", "encode_train", "encode_inference", "build_trie", "Tokenizer"]

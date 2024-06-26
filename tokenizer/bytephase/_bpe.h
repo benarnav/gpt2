@@ -63,6 +63,8 @@ void free_trie(Trie* trie);
 static void trie_capsule_destructor(PyObject *capsule);
 static PyObject* train(PyObject* self, PyObject* args);
 static PyObject* build_trie(PyObject* self, PyObject* args);
-static PyObject* encode(PyObject* self, PyObject* args);
+static PyObject* encode_train(PyObject* self, PyObject* args);
+static PyObject* encode_inference(PyObject* self, PyObject* args);
+
 
 #endif
