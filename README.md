@@ -22,7 +22,7 @@ The implementation is built from the ground up using only the following research
 This approach ensures a deep understanding of the model's architecture and underlying principles.
 
 ## Challenges and Solutions
-1. **Tokenization Speed**: The speed of the tokenizer was initially a major bottleneck. This was overcome by implementing C extensions, significantly improving performance.
+1. **Tokenization Speed**: The speed of the tokenizer was initially a major bottleneck. This was overcome by [implementing C extensions](https://github.com/benarnav/bytephase), significantly improving performance.
 
 2. **Missing Information**: The original paper did not provide complete information on certain aspects:
    - Gradient clipping details
