@@ -76,34 +76,29 @@ def validate(model, dataloader, loss_function, d_vocab, device):
 
 
 def load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024):
-    def tokenize_function(examples):
-        encoded = {"input_ids": [tokenizer(text) for text in examples["text"]]}
-
+    def tokenize_function(example):
+        tokens = tokenizer.encode(example["text"], train_mode=True)
         all_input_ids = []
-        all_labels = []
 
-        for tokens, label in zip(encoded["input_ids"], examples["label"]):
-            for i in range(0, len(tokens), seq_len):
-                chunk = tokens[i : i + seq_len]
+        for i in range(0, len(tokens), seq_len):
+            chunk = tokens[i : i + seq_len]
 
-                if len(chunk) < seq_len:
-                    chunk = chunk + [256] * (seq_len - len(chunk))
-                all_input_ids.append(chunk)
-                all_labels.append(label)
+            if len(chunk) < seq_len:
+                chunk = chunk + [256] * (seq_len - len(chunk))
+            all_input_ids.append(chunk)
 
-        return {"input_ids": all_input_ids, "labels": all_labels}
+        return {"input_ids": all_input_ids}
 
     def create_dataloader(data):
-        encoded_dataset = data.map(tokenize_function, batched=True, remove_columns=["text"])
-        encoded_dataset.set_format("torch")
+        encoded_dataset = data.map(tokenize_function, remove_columns=["text"])
+        list_dataset = [{"input_ids": torch.tensor(item["input_ids"], dtype=torch.long)} for item in encoded_dataset]
 
         return DataLoader(
-            encoded_dataset["train"],
+            list_dataset,
             batch_size=batch_size,
             shuffle=True,
             collate_fn=lambda batch: {
-                "input_ids": torch.stack([item["input_ids"] for item in batch]),
-                "labels": torch.tensor([item["labels"] for item in batch]),
+                "input_ids": torch.cat([item["input_ids"] for item in batch]),
             },
         )
 

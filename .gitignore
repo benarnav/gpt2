@@ -130,3 +130,4 @@ logs/
 *.bpe
 config_test.py
 test.py
+*.txt
