@@ -129,3 +129,4 @@ checkpoint/
 logs/
 *.bpe
 config_test.py
+test.py
