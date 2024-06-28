@@ -116,13 +116,12 @@ def validate(model, dataloader, loss_function, d_vocab, device) -> float:
 
     with torch.no_grad():
         for batch in progress_bar:
-            inputs, targets = batch
-            inputs, targets = inputs.to(device), targets.to(device)
+            inputs = batch["input_ids"].to(device)
+            targets = inputs[:, 1:]
 
             logits = model(inputs)
             targets = F.one_hot(targets, num_classes=d_vocab)
 
-            targets = targets[:, 1:, :]
             logits = logits[:, :-1, :]
 
             loss = loss_function(logits, targets)

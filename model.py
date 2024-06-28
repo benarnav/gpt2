@@ -75,7 +75,7 @@ class GPT2(nn.Module):
         self.config = config
         self.W_E = nn.Embedding(self.config.d_vocab, self.config.d_model)
         nn.init.normal_(self.W_E.weight, mean=0.0, std=self.config.weight_init)
-        self.pos = nn.Parameter(torch.zeros(config.d_seq, self.config.d_model))
+        self.pos = nn.Parameter(torch.zeros(self.config.d_seq, self.config.d_model))
         layers = [TransformerBlock(self.config) for _ in range(self.config.num_layers)]
         layers.append(LayerNorm(self.config.d_model))
         self.layers = nn.Sequential(*layers)

@@ -51,7 +51,6 @@ class Attention(nn.Module):
             diagonal=1,
         )
         self.mask = torch.where(upper_tri == 1, torch.tensor(float("-inf")), zeroes)
-        self.mask.to(self.W_Q.device)
 
     def forward(self, residual: torch.Tensor) -> torch.Tensor:
         """
@@ -63,6 +62,8 @@ class Attention(nn.Module):
         Returns:
             torch.Tensor: Output tensor with shape (batch, seq, d_model).
         """
+        self.mask = self.mask.to(self.W_K.device)
+
         K = einops.einsum(
             self.W_K,
             residual,
