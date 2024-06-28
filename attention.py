@@ -34,45 +34,24 @@ class Attention(nn.Module):
     def __init__(self, config: GPT2Config) -> None:
         super().__init__()
         self.config = config
-        self.W_Q = nn.Parameter(
-            torch.randn((config.num_heads, config.d_model, config.d_head))
-            * math.sqrt(0.02)
-        )
-        self.W_K = nn.Parameter(
-            torch.randn((config.num_heads, config.d_model, config.d_head))
-            * math.sqrt(0.02)
-        )
-        self.W_V = nn.Parameter(
-            torch.randn((config.num_heads, config.d_model, config.d_head))
-            * math.sqrt(0.02)
-        )
-        self.W_O = nn.Parameter(
-            torch.randn((config.num_heads * config.d_head, config.d_model))
-            * math.sqrt(0.02)
-        )
-        self.W_O /= (
-            config.num_layers**0.5
-        )  # scaling initialization as specified in the paper
+        self.W_Q = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
+        self.W_K = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
+        self.W_V = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
+        self.W_O = nn.Parameter(torch.randn((config.num_heads * config.d_head, config.d_model)) * math.sqrt(0.02))
+        self.W_O /= config.num_layers**0.5  # scaling initialization as specified in the paper
 
-        self.b_Q = nn.Parameter(
-            torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02)
-        )
-        self.b_K = nn.Parameter(
-            torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02)
-        )
-        self.b_V = nn.Parameter(
-            torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02)
-        )
+        self.b_Q = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
+        self.b_K = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
+        self.b_V = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
         self.b_O = nn.Parameter(torch.randn((config.d_model)) * math.sqrt(0.02))
 
-        zeroes = torch.zeros(
-            (self.config.num_heads, self.config.d_seq, self.config.d_seq)
-        )
+        zeroes = torch.zeros((self.config.num_heads, self.config.d_seq, self.config.d_seq))
         upper_tri = torch.triu(
             torch.ones((self.config.num_heads, self.config.d_seq, self.config.d_seq)),
             diagonal=1,
         )
         self.mask = torch.where(upper_tri == 1, torch.tensor(float("-inf")), zeroes)
+        self.mask.to(self.W_Q.device)
 
     def forward(self, residual: torch.Tensor) -> torch.Tensor:
         """
@@ -118,9 +97,7 @@ class Attention(nn.Module):
             V,
             "batch num_heads seq_q seq_k, batch seq_v num_heads d_head -> batch seq_q num_heads d_head",
         )
-        multi_head = einops.rearrange(
-            attn, "batch seq_q num_heads d_head -> batch seq_q (num_heads d_head)"
-        )
+        multi_head = einops.rearrange(attn, "batch seq_q num_heads d_head -> batch seq_q (num_heads d_head)")
 
         return (
             einops.einsum(
