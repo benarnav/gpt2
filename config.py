@@ -15,3 +15,4 @@ class GPT2Config:
     dropout_rate: float = 0.01
     weight_init: float = 0.02
     output_dir: str = "gpt2_output/"
+    eos_token_id: int = 256

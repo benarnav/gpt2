@@ -34,16 +34,25 @@ class Adam(nn.Module):
         for param in self.params:
             param.grad = None
 
-    def _get_learning_rate(self):
+    def _learning_rate_schedule(self):
         if self.t <= self.warmup:
             return (self.t / self.warmup) * self.lr_max
         else:
-            return self.lr_max * 0.5 * (1 + math.cos(math.pi * (self.t - self.warmup) / (self.total_t - self.warmup)))
+            return (
+                self.lr_max
+                * 0.5
+                * (
+                    1
+                    + math.cos(
+                        math.pi * (self.t - self.warmup) / (self.total_t - self.warmup)
+                    )
+                )
+            )
 
     @torch.inference_mode
     def step(self):
 
-        self.lr = self._get_learning_rate()
+        self.lr = self._learning_rate_schedule()
         for idx, param in enumerate(self.params):
             g_t = param.grad
 
@@ -52,6 +61,8 @@ class Adam(nn.Module):
             m_hat = self.m[idx] / (1 - self.betas[0] ** self.t)
             v_hat = self.v[idx] / (1 - self.betas[1] ** self.t)
 
-            param -= ((self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)) + (self.weight_decay * param)
+            param -= ((self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)) + (
+                self.weight_decay * param
+            )
 
         self.t += 1
