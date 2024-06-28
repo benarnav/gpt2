@@ -13,13 +13,13 @@ This project is a pure Python/PyTorch implementation of GPT-2, with custom C ext
 ## Approach
 The implementation is built from the ground up using only the following research papers:
 1. Three papers on transformer architectures:
-- [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
-- [Improving Language Understanding by Generative Pre-Training](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf)
-- [Attention Is All You Need](https://arxiv.org/pdf/1706.03762)
+   - [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
+   - [Improving Language Understanding by Generative Pre-Training](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf)
+   - [Attention Is All You Need](https://arxiv.org/pdf/1706.03762)
 2. One paper on [byte pair encoding](https://arxiv.org/pdf/1508.07909)
 3. Two papers on Adam optimizer: 
- - [Adam: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980)
- - [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v1)
+   - [Adam: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980)
+   - [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v1)
 4. One paper on the [GeLU](https://arxiv.org/pdf/1606.08415v1) activation function
 5. One paper on [Layer Normalization](https://arxiv.org/pdf/1607.06450)
 
@@ -27,10 +27,10 @@ By relying solely on these papers, this project ensures a deep understanding of 
 
 ## Challenges and Solutions
 1. *Tokenization Speed* 
-- **Challenge**: Initial bottleneck due to slow tokenization when implemented in Python.
-- **Solution**: Implemented [C extensions](https://github.com/benarnav/bytephase) for the tokenizer, significantly improving performance in training and encoding.
+   - **Challenge**: Initial bottleneck due to slow tokenization when implemented in Python.
+   - **Solution**: Implemented [C extensions](https://github.com/benarnav/bytephase) for the tokenizer, significantly improving performance in training and encoding.
 
-2. *Missing Information*:
+2. *Missing Information*
    - **Gradient clipping details**:  Addressed by experimenting with common practices in transformer training.
    - **Exact composition of the training dataset**: Used available datasets of comparable composition and ensured robust preprocessing and tokenization.
    - **Distributed training architecture**: No training details were provided
