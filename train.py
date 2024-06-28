@@ -20,7 +20,7 @@ Functions:
 
 Usage:
     Run the script from the command line with the required arguments. For example:
-        python train_gpt2.py --dataset <dataset_name>
+        python train.py --dataset <dataset_name>
 """
 
 import argparse
@@ -71,15 +71,15 @@ def train(model, dataloader, optimizer, loss_function, d_vocab, device) -> float
     progress_bar = tqdm(dataloader, desc="Training")
 
     for batch in progress_bar:
-        inputs, targets = batch
-        inputs, targets = inputs.to(device), targets.to(device)
+        # print(batch)
+        inputs = batch["input_ids"].to(device)
+        targets = inputs[:, 1:]
 
         optimizer.zero_grad()
-
         logits = model(inputs)
-        targets = F.one_hot(targets, num_classes=d_vocab)
 
-        targets = targets[:, 1:, :]
+        # targets = targets[:, 1:, :]
+        targets = F.one_hot(targets, num_classes=d_vocab)
         logits = logits[:, :-1, :]
 
         loss = loss_function(logits, targets)
@@ -133,9 +133,7 @@ def validate(model, dataloader, loss_function, d_vocab, device) -> float:
     return avg_loss
 
 
-def load_and_encode_dataset(
-    dataset_name, tokenizer, batch_size=64, seq_len=1024
-) -> tuple:
+def load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024) -> tuple:
     """
     Loads and tokenizes the dataset, then creates dataloaders for training and validation.
 
@@ -164,10 +162,7 @@ def load_and_encode_dataset(
 
     def create_dataloader(data):
         encoded_dataset = data.map(tokenize_function, remove_columns=["text"])
-        list_dataset = [
-            {"input_ids": torch.tensor(item["input_ids"], dtype=torch.long)}
-            for item in encoded_dataset
-        ]
+        list_dataset = [{"input_ids": torch.tensor(item["input_ids"], dtype=torch.long)} for item in encoded_dataset]
 
         return DataLoader(
             list_dataset,
@@ -206,18 +201,16 @@ def main():
     - Saves the best model based on validation loss.
     """
     args = parse_args()
-    wandb.init(project="gpt2-training")
+    # wandb.init(project="gpt2-training")
     config = GPT2Config()
     tokenizer = Tokenizer()
-    tokenizer.load("TK.bpe")
+    tokenizer.load("pile10k-20kmerges.bpe")
     model = GPT2(config)
     optimizer = Adam(model.parameters())
     loss_function = nn.CrossEntropyLoss()
 
     device = torch.device(
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps" if torch.backends.mps.is_available() else "cpu"
+        "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     )
 
     model.to(device)
@@ -226,17 +219,13 @@ def main():
     best_val_loss = float("inf")
 
     for epoch in range(GPT2Config.epochs):
-        avg_train_loss = train(
-            model, train_data, optimizer, loss_function, config.d_vocab, device
-        )
+        avg_train_loss = train(model, train_data, optimizer, loss_function, config.d_vocab, device)
         avg_val_loss = validate(model, val_data, loss_function, config.d_vocab, device)
 
-        wandb.log(
-            {"epoch": epoch + 1, "train_loss": avg_train_loss, "val_loss": avg_val_loss}
-        )
-        print(
-            f"Epoch {epoch+1}, Train Loss: {avg_train_loss}, Validation Loss: {avg_val_loss}"
-        )
+        # wandb.log(
+        #     {"epoch": epoch + 1, "train_loss": avg_train_loss, "val_loss": avg_val_loss}
+        # )
+        print(f"Epoch {epoch+1}, Train Loss: {avg_train_loss}, Validation Loss: {avg_val_loss}")
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss

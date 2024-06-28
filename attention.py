@@ -38,7 +38,7 @@ class Attention(nn.Module):
         self.W_K = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
         self.W_V = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
         self.W_O = nn.Parameter(torch.randn((config.num_heads * config.d_head, config.d_model)) * math.sqrt(0.02))
-        self.W_O /= config.num_layers**0.5  # scaling initialization as specified in the paper
+        self.W_O.data /= config.num_layers**0.5  # scaling initialization as specified in the paper
 
         self.b_Q = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
         self.b_K = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
