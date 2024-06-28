@@ -37,8 +37,11 @@ class Attention(nn.Module):
         self.W_Q = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
         self.W_K = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
         self.W_V = nn.Parameter(torch.randn((config.num_heads, config.d_model, config.d_head)) * math.sqrt(0.02))
-        self.W_O = nn.Parameter(torch.randn((config.num_heads * config.d_head, config.d_model)) * math.sqrt(0.02))
-        self.W_O.data /= config.num_layers**0.5  # scaling initialization as specified in the paper
+        self.W_O = nn.Parameter(
+            torch.randn((config.num_heads * config.d_head, config.d_model)) * math.sqrt(0.02) / (config.num_layers**0.5)
+        )
+        # self.W_O = self.W_O   # scaling initialization as specified in the paper
+        # nn.init
 
         self.b_Q = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
         self.b_K = nn.Parameter(torch.randn((config.num_heads, config.d_head)) * math.sqrt(0.02))
@@ -69,21 +72,21 @@ class Attention(nn.Module):
             residual,
             "num_heads d_model d_head, batch seq d_model -> batch seq num_heads d_head",
         )
-        K += self.b_K
+        K = K + self.b_K
 
         Q = einops.einsum(
             self.W_Q,
             residual,
             "num_heads d_model d_head, batch seq d_model -> batch seq num_heads d_head",
         )
-        Q += self.b_Q
+        Q = Q + self.b_Q
 
         V = einops.einsum(
             self.W_V,
             residual,
             "num_heads d_model d_head, batch seq d_model -> batch seq num_heads d_head",
         )
-        V += self.b_V
+        V = V + self.b_V
 
         QK = einops.einsum(
             Q,

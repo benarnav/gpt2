@@ -86,8 +86,8 @@ class Adam(nn.Module):
             m_hat = self.m[idx] / (1 - self.betas[0] ** self.t)
             v_hat = self.v[idx] / (1 - self.betas[1] ** self.t)
 
-            param -= ((self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)) + (
+            param = param - (((self.lr * m_hat) / (torch.sqrt(v_hat) + self.eps)) + (
                 self.weight_decay * param
-            )
+            ))
 
         self.t += 1
