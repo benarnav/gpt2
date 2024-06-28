@@ -6,6 +6,20 @@ import torch.nn as nn
 
 
 class Adam(nn.Module):
+    """
+    Implements the Adam optimization algorithm with learning rate scheduling.
+
+    Args:
+        params (Iterable[nn.parameter.Parameter]): Iterable of parameters to optimize.
+        lr (float, optional): Initial learning rate. Default is 0.0.
+        lr_max (float, optional): Maximum learning rate. Default is 2.5e-4.
+        lr_warmup (int, optional): Number of warmup steps for the learning rate schedule. Default is 2000.
+        betas (tuple, optional): Coefficients used for computing running averages of gradient and its square. Default is (0.9, 0.999).
+        eps (float, optional): Term added to the denominator to improve numerical stability. Default is 1e-8.
+        weight_decay (float, optional): Weight decay (L2 penalty). Default is 0.01.
+        total_t (int, optional): Total number of training steps. Default is 98000.
+    """
+
     def __init__(
         self,
         params: Iterable[nn.parameter.Parameter],
@@ -31,10 +45,19 @@ class Adam(nn.Module):
         self.total_t = total_t
 
     def zero_grad(self) -> None:
+        """
+        Sets the gradients of all optimized parameters to None.
+        """
         for param in self.params:
             param.grad = None
 
-    def _learning_rate_schedule(self):
+    def _learning_rate_schedule(self) -> float:
+        """
+        Computes the learning rate according to the warmup and cosine decay schedule.
+
+        Returns:
+            float: The computed learning rate.
+        """
         if self.t <= self.warmup:
             return (self.t / self.warmup) * self.lr_max
         else:
@@ -50,8 +73,10 @@ class Adam(nn.Module):
             )
 
     @torch.inference_mode
-    def step(self):
-
+    def step(self) -> None:
+        """
+        Performs a single optimization step.
+        """
         self.lr = self._learning_rate_schedule()
         for idx, param in enumerate(self.params):
             g_t = param.grad

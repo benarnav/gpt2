@@ -1,3 +1,28 @@
+"""
+This script trains a GPT-2 model on a specified dataset using the 
+Adam optimizer and logs the training process with Weights & Biases (wandb).
+
+Functions:
+    parse_args():
+        Parses command line arguments to get the dataset name.
+    
+    train(model, dataloader, optimizer, loss_function, d_vocab, device):
+        Trains the model for one epoch.
+
+    validate(model, dataloader, loss_function, d_vocab, device):
+        Validates the model on the validation dataset.
+
+    load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024):
+        Loads and tokenizes the dataset, then creates dataloaders for training and validation.
+
+    main():
+        Main function to initialize the training process.
+
+Usage:
+    Run the script from the command line with the required arguments. For example:
+        python train_gpt2.py --dataset <dataset_name>
+"""
+
 import argparse
 
 import datasets
@@ -15,12 +40,32 @@ from model import GPT2
 
 
 def parse_args():
+    """
+    Parses command line arguments to get the dataset name.
+
+    Returns:
+        argparse.Namespace: Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True, help="Dataset name")
     return parser.parse_args()
 
 
-def train(model, dataloader, optimizer, loss_function, d_vocab, device):
+def train(model, dataloader, optimizer, loss_function, d_vocab, device) -> float:
+    """
+    Trains the model for one epoch.
+
+    Args:
+        model (torch.nn.Module): The model to be trained.
+        dataloader (DataLoader): Dataloader for the training data.
+        optimizer (torch.optim.Optimizer): Optimizer for training.
+        loss_function (torch.nn.Module): Loss function.
+        d_vocab (int): Size of the vocabulary.
+        device (torch.device): Device to train the model on.
+
+    Returns:
+        float: Average training loss for the epoch.
+    """
     model.train()
     total_loss = 0
     progress_bar = tqdm(dataloader, desc="Training")
@@ -51,7 +96,20 @@ def train(model, dataloader, optimizer, loss_function, d_vocab, device):
     return avg_loss
 
 
-def validate(model, dataloader, loss_function, d_vocab, device):
+def validate(model, dataloader, loss_function, d_vocab, device) -> float:
+    """
+    Validates the model on the validation dataset.
+
+    Args:
+        model (torch.nn.Module): The model to be validated.
+        dataloader (DataLoader): Dataloader for the validation data.
+        loss_function (torch.nn.Module): Loss function.
+        d_vocab (int): Size of the vocabulary.
+        device (torch.device): Device to validate the model on.
+
+    Returns:
+        float: Average validation loss.
+    """
     model.eval()
     total_loss = 0
     progress_bar = tqdm(dataloader, desc="Validating")
@@ -75,7 +133,22 @@ def validate(model, dataloader, loss_function, d_vocab, device):
     return avg_loss
 
 
-def load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024):
+def load_and_encode_dataset(
+    dataset_name, tokenizer, batch_size=64, seq_len=1024
+) -> tuple:
+    """
+    Loads and tokenizes the dataset, then creates dataloaders for training and validation.
+
+    Args:
+        dataset_name (str): Name of the dataset to load.
+        tokenizer (Tokenizer): Tokenizer to encode the dataset.
+        batch_size (int, optional): Batch size for the dataloaders. Default is 64.
+        seq_len (int, optional): Sequence length for the tokenized inputs. Default is 1024.
+
+    Returns:
+        tuple: Dataloaders for training and validation datasets.
+    """
+
     def tokenize_function(example):
         tokens = tokenizer.encode(example["text"], train_mode=True)
         all_input_ids = []
@@ -91,7 +164,10 @@ def load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024
 
     def create_dataloader(data):
         encoded_dataset = data.map(tokenize_function, remove_columns=["text"])
-        list_dataset = [{"input_ids": torch.tensor(item["input_ids"], dtype=torch.long)} for item in encoded_dataset]
+        list_dataset = [
+            {"input_ids": torch.tensor(item["input_ids"], dtype=torch.long)}
+            for item in encoded_dataset
+        ]
 
         return DataLoader(
             list_dataset,
@@ -117,6 +193,18 @@ def load_and_encode_dataset(dataset_name, tokenizer, batch_size=64, seq_len=1024
 
 
 def main():
+    """
+    Main function to initialize the training process.
+
+    This function:
+    - Parses command line arguments.
+    - Initializes wandb for logging.
+    - Loads the tokenizer and model.
+    - Loads the dataset and creates dataloaders.
+    - Trains and validates the model for a specified number of epochs.
+    - Logs the training and validation losses to wandb.
+    - Saves the best model based on validation loss.
+    """
     args = parse_args()
     wandb.init(project="gpt2-training")
     config = GPT2Config()
@@ -127,7 +215,9 @@ def main():
     loss_function = nn.CrossEntropyLoss()
 
     device = torch.device(
-        "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available() else "cpu"
     )
 
     model.to(device)
@@ -136,11 +226,17 @@ def main():
     best_val_loss = float("inf")
 
     for epoch in range(GPT2Config.epochs):
-        avg_train_loss = train(model, train_data, optimizer, loss_function, config.d_vocab, device)
+        avg_train_loss = train(
+            model, train_data, optimizer, loss_function, config.d_vocab, device
+        )
         avg_val_loss = validate(model, val_data, loss_function, config.d_vocab, device)
 
-        wandb.log({"epoch": epoch + 1, "train_loss": avg_train_loss, "val_loss": avg_val_loss})
-        print(f"Epoch {epoch+1}, Train Loss: {avg_train_loss}, Validation Loss: {avg_val_loss}")
+        wandb.log(
+            {"epoch": epoch + 1, "train_loss": avg_train_loss, "val_loss": avg_val_loss}
+        )
+        print(
+            f"Epoch {epoch+1}, Train Loss: {avg_train_loss}, Validation Loss: {avg_val_loss}"
+        )
 
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss

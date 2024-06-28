@@ -42,15 +42,15 @@ class TransformerBlock(nn.Module):
         self.mlp_norm = LayerNorm(config.d_model)
         self.mlp = MLP(config)
 
-    def forward(self, residual: torch.Tensor):
+    def forward(self, residual: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the TransformerBlock.
 
         Args:
-            residual (torch.Tensor): The input tensor.
+            residual (torch.Tensor): The input tensor with shape (batch, seq, d_model).
 
         Returns:
-            torch.Tensor: The output tensor after passing through the transformer block.
+            torch.Tensor: The output tensor after passing through the transformer block with shape (batch, seq, d_model).
         """
         pre_attn_norm = self.attention_norm(residual)
         attn_out = self.attention(pre_attn_norm)
@@ -70,7 +70,7 @@ class TransformerBlock(nn.Module):
 
 
 class GPT2(nn.Module):
-    def __init__(self, config: GPT2Config = GPT2Config()):
+    def __init__(self, config: GPT2Config = GPT2Config()) -> None:
         super().__init__()
         self.config = config
         self.W_E = nn.Embedding(self.config.d_vocab, self.config.d_model)
@@ -82,7 +82,7 @@ class GPT2(nn.Module):
         self.W_U = nn.Linear(self.config.d_model, self.config.d_vocab, bias=False)
         self.W_U.weight = self.W_E.weight
 
-    def forward(self, input: torch.Tensor):  # "batch seq"
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the GPT2 model.
 
@@ -106,7 +106,7 @@ class GPT2(nn.Module):
         max_tokens: int = 150,
         temperature: float = 1.0,
         p: float = 0.9,
-    ):
+    ) -> torch.tensor:
         """
         Generate text using the GPT2 model with nucleus sampling.
 

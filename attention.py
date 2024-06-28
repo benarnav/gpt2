@@ -8,7 +8,30 @@ from config import GPT2Config
 
 
 class Attention(nn.Module):
-    def __init__(self, config: GPT2Config):
+    """
+    Implements the multi-head self-attention mechanism used in GPT-2.
+
+    Args:
+        config (GPT2Config): Configuration object containing hyperparameters for the model.
+
+    Attributes:
+        W_Q (torch.nn.Parameter): Query weight matrix.
+        W_K (torch.nn.Parameter): Key weight matrix.
+        W_V (torch.nn.Parameter): Value weight matrix.
+        W_O (torch.nn.Parameter): Output weight matrix.
+        b_Q (torch.nn.Parameter): Query bias vector.
+        b_K (torch.nn.Parameter): Key bias vector.
+        b_V (torch.nn.Parameter): Value bias vector.
+        b_O (torch.nn.Parameter): Output bias vector.
+        mask (torch.Tensor): Masking tensor to prevent attention to future positions.
+
+    Methods:
+        forward(residual: torch.Tensor) -> torch.Tensor:
+            Computes the multi-head self-attention output.
+
+    """
+
+    def __init__(self, config: GPT2Config) -> None:
         super().__init__()
         self.config = config
         self.W_Q = nn.Parameter(
@@ -51,7 +74,16 @@ class Attention(nn.Module):
         )
         self.mask = torch.where(upper_tri == 1, torch.tensor(float("-inf")), zeroes)
 
-    def forward(self, residual: torch.Tensor):  # shape: "batch seq d_model"
+    def forward(self, residual: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the multi-head self-attention output.
+
+        Args:
+            residual (torch.Tensor): Input tensor with shape (batch, seq, d_model).
+
+        Returns:
+            torch.Tensor: Output tensor with shape (batch, seq, d_model).
+        """
         K = einops.einsum(
             self.W_K,
             residual,
