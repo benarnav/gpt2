@@ -57,14 +57,14 @@ class TransformerBlock(nn.Module):
         if self.training:
             attn_out = _dropout(attn_out, self.config.dropout_rate)
 
-        residual += attn_out
+        residual = residual + attn_out
 
         pre_mlp_norm = self.mlp_norm(residual)
         mlp_out = self.mlp(pre_mlp_norm)
         if self.training:
             mlp_out = _dropout(mlp_out, self.config.dropout_rate)
 
-        residual += mlp_out
+        residual = residual + mlp_out
 
         return residual
 
