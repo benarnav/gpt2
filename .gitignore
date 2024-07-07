@@ -131,3 +131,4 @@ logs/
 config_test.py
 test.py
 *.txt
+*.json
