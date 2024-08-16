@@ -1,17 +1,20 @@
 # GPT-2 From Scratch
 
 ## tl;dr
+
 - *Pure Python/PyTorch implementation*: Built from the ground up for deeper understanding.
 - *C extensions for optimized tokenization*: Enhanced training and encoding performance.
 - *Faithful recreation based on research papers*: No external implementations or resources.
 - *Clear and well-documented code*: Emphasis on readability and comprehension.
 
 ## Overview
-This project is a pure Python/PyTorch implementation of GPT-2, with custom C extensions for the tokenizer to improve performance. The goal is to recreate GPT-2 solely based on core research papers, enhancing my understanding of the transformer architecture and my ability to produce functional code from academic literature.
 
+This project is a pure Python/PyTorch implementation of GPT-2, with custom C extensions for the [tokenizer](https://github.com/benarnav/bytephase) to improve performance. The goal is to recreate GPT-2 solely based on core research papers, enhancing my understanding of the transformer architecture and my ability to produce functional code from academic literature.
 
 ## Approach
+
 The implementation is built from the ground up using only the following research papers:
+
 1. Three papers on transformer architectures:
    - [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
    - [Improving Language Understanding by Generative Pre-Training](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf)
@@ -26,7 +29,9 @@ The implementation is built from the ground up using only the following research
 By relying solely on these papers, this project ensures a deep understanding of GPT-2's architecture and principles.
 
 ## Challenges and Solutions
+
 1. *Tokenization Speed* 
+
    - **Challenge**: Initial bottleneck due to slow tokenization when implemented in Python.
    - **Solution**: Implemented [C extensions](https://github.com/benarnav/bytephase) for the tokenizer, significantly improving performance in training and encoding.
 
@@ -36,6 +41,7 @@ By relying solely on these papers, this project ensures a deep understanding of 
    - **Distributed training architecture**: No training details were provided
 
 ## WIP
+
 - Add training statistics
 - Add generation examples
 - Distributed Training: Implement multi-GPU and distributed training strategies.
