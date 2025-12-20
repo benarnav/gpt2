@@ -35,13 +35,10 @@ By relying solely on these papers, this project ensures a deep understanding of 
    - **Challenge**: Initial bottleneck due to slow tokenization when implemented in Python.
    - **Solution**: Implemented [C extensions](https://github.com/benarnav/bytephase) for the tokenizer, significantly improving performance in training and encoding.
 
-2. *Missing Information*
+2. *WIP*
    - **Gradient clipping details**:  Addressed by experimenting with common practices in transformer training.
-   - **Exact composition of the training dataset**: Used available datasets of comparable composition and ensured robust preprocessing and tokenization.
-   - **Distributed training architecture**: No training details were provided
+   - **Exact composition of the training dataset**: Plan to use available datasets of similar to webtext
+   - **Distributed Training**: Implement multi-GPU and distributed training strategies. Add training statistics and generation examples.
 
-## WIP
 
-- Add training statistics
-- Add generation examples
-- Distributed Training: Implement multi-GPU and distributed training strategies.
+
